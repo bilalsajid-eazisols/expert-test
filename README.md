@@ -97,7 +97,69 @@ Combined with database schema fix, this ensures end-to-end validation integrity.
 
 ---
 
-### 4. Email Function Receiving Incomplete Data
+### 4. Missing Database Insertion Function Implementation
+**File**: `src/components/LeadCaptureForm.tsx`  
+**Severity**: Critical  
+**Status**: Fixed
+
+#### Problem
+The lead capture form was missing the actual database insertion logic. The form was only sending confirmation emails without saving lead data to the database, resulting in:
+- Complete loss of lead data
+- No persistent storage of submissions
+- Inability to track and manage leads
+- Business intelligence data missing
+
+#### Root Cause
+Initial implementation focused only on email functionality and lacked the critical database insertion step using Supabase client.
+
+#### Fix
+Implemented complete database insertion logic with proper error handling:
+```typescript
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const errors = validateLeadForm(formData);
+  setValidationErrors(errors);
+
+  if (errors.length === 0) {
+    try {
+      // Save to database first
+      const { data, error: dbError } = await supabase
+        .from('leads')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            industry: formData.industry,
+            submitted_at: new Date().toISOString(),
+          }
+        ])
+        .select();
+
+      if (dbError) {
+        console.error('CRITICAL: Database insert failed:', dbError);
+        alert(`Database Error: ${dbError.message}`);
+        return; // Don't proceed if database save fails
+      }
+
+      console.log('Lead saved to database successfully:', data);
+      
+      // Then send confirmation email...
+    } catch (error) {
+      console.error('Unexpected error during form submission:', error);
+    }
+  }
+};
+```
+
+#### Impact
+- Lead data now properly saved to Supabase database
+- Robust error handling with user feedback
+- Database-first approach ensures data integrity
+- Complete lead management workflow established
+
+---
+
+### 5. Email Function Receiving Incomplete Data
 **File**: `supabase/functions/send-confirmation/index.ts`  
 **Severity**: Medium  
 **Status**: Fixed
@@ -156,6 +218,6 @@ After implementing these fixes:
 - Form validation provides proper feedback
 - TypeScript compilation passes without errors
 
-**Total Issues Resolved**: 4  
-**Critical Bugs Fixed**: 2  
+**Total Issues Resolved**: 5  
+**Critical Bugs Fixed**: 3  
 **System Reliability**: Restored to 100%
